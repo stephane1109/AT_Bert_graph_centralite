@@ -114,9 +114,10 @@ def split_text_into_sentences(text):
     sentences = re.split(r'(?<=[.!?])\s+', text)
     return [s.strip() for s in sentences if s.strip()]
 
+
 # ---------------------------------------------------------------------
 # Fonctions d'embedding (avec CamemBERT)
-# Nous conservons Mean pooling, Weighted pooling et SIF pooling.
+# Nous conservons Mean pooling, Weighted pooling, Max pooling et SIF pooling.
 # ---------------------------------------------------------------------
 def encoder_phrase(phrase):
     """Encode une phrase via CamemBERT selon la méthode de pooling choisie."""
@@ -154,6 +155,10 @@ def encoder_phrase(phrase):
         normalization = weights_tensor.sum()
         emb = weighted_embeds / (normalization if normalization != 0 else 1)
         return emb.cpu().numpy().squeeze(0)
+    elif method == "max":
+        # Max pooling : prendre la valeur maximale sur la dimension des tokens
+        emb = outputs.last_hidden_state.max(dim=1)[0]
+        return emb.cpu().numpy().squeeze(0)
     elif method == "sif":
         a = 0.001
         tokens_pretraitee = phrase_pretraitee.split()
@@ -184,8 +189,10 @@ def encoder_phrase(phrase):
         emb = weighted_embeds / (normalization if normalization != 0 else 1)
         return emb.cpu().numpy().squeeze(0)
     else:
+        # Par défaut, on utilise Mean pooling
         emb = outputs.last_hidden_state.mean(dim=1)
         return emb.cpu().numpy().squeeze(0)
+
 
 def encoder_contextuel_simplifie(texte, mot_cle):
     """
@@ -481,7 +488,8 @@ frame_embedding.grid(row=2, column=0, padx=10, pady=10, sticky=tk.W+tk.E)
 pooling_method = tk.StringVar(value="mean")
 ttk.Radiobutton(frame_embedding, text="Mean pooling", variable=pooling_method, value="mean").grid(row=0, column=0, sticky=tk.W)
 ttk.Radiobutton(frame_embedding, text="Weighted pooling (fréquence)", variable=pooling_method, value="weighted").grid(row=0, column=1, sticky=tk.W)
-ttk.Radiobutton(frame_embedding, text="SIF pooling", variable=pooling_method, value="sif").grid(row=0, column=2, sticky=tk.W)
+ttk.Radiobutton(frame_embedding, text="Max pooling", variable=pooling_method, value="max").grid(row=0, column=2, sticky=tk.W)
+ttk.Radiobutton(frame_embedding, text="SIF pooling", variable=pooling_method, value="sif").grid(row=0, column=3, sticky=tk.W)
 
 # Cadre pour la sélection de la mesure de centralité
 frame_centralite = ttk.LabelFrame(root, text="Mesure de centralité", padding="10")
